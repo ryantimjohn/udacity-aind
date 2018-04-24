@@ -35,7 +35,15 @@ def custom_score(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    return float(own_moves - opp_moves)
 
 
 def custom_score_2(game, player):
@@ -61,7 +69,13 @@ def custom_score_2(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    return float(len(game.get_legal_moves(player)))
 
 
 def custom_score_3(game, player):
@@ -87,7 +101,15 @@ def custom_score_3(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    w, h = game.width / 2., game.height / 2.
+    y, x = game.get_player_location(player)
+    return float((h - y)**2 + (w - x)**2)
 
 
 class IsolationPlayer:
@@ -173,37 +195,30 @@ class MinimaxPlayer(IsolationPlayer):
     def minimax(self, game, depth):
         """Implement depth-limited minimax search algorithm as described in
         the lectures.
-
         This should be a modified version of MINIMAX-DECISION in the AIMA text.
         https://github.com/aimacode/aima-pseudocode/blob/master/md/Minimax-Decision.md
-
         **********************************************************************
             You MAY add additional methods to this class, or define helper
                  functions to implement the required functionality.
         **********************************************************************
-
         Parameters
         ----------
         game : isolation.Board
             An instance of the Isolation game `Board` class representing the
             current game state
-
         depth : int
             Depth is an integer representing the maximum number of plies to
             search in the game tree before aborting
-
         Returns
         -------
         (int, int)
             The board coordinates of the best move found in the current search;
             (-1, -1) if there are no legal moves
-
         Notes
         -----
             (1) You MUST use the `self.score()` method for board evaluation
                 to pass the project tests; you cannot call any other evaluation
                 function directly.
-
             (2) If you use any helper functions (e.g., as shown in the AIMA
                 pseudocode) then you must copy the timer check into the top of
                 each helper function or else your agent will timeout during
@@ -212,8 +227,34 @@ class MinimaxPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        return self.mm_stepper(game, depth)[0]
+
+    def mm_stepper(self, game, depth):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        if depth == 0:
+            return (game.get_player_location, self.score(game, self))
+
+        if game.active_player == self:
+            value, best = float("-inf"), (-1,-1)
+            for move in game.get_legal_moves():
+                next = game.forecast_move(move)
+                score = self.mm_stepper(next, depth - 1)[1]
+                if max(value, score) == score:
+                    best = move
+                    value = score
+
+        else:
+            value, best = float("inf"), (-1,-1)
+            for move in game.get_legal_moves():
+                next = game.forecast_move(move)
+                score = self.mm_stepper(next, depth - 1)[1]
+                if min(value, score) == score:
+                    best = move
+                    value = score
+
+        return best, value
 
 
 class AlphaBetaPlayer(IsolationPlayer):
@@ -254,8 +295,15 @@ class AlphaBetaPlayer(IsolationPlayer):
         """
         self.time_left = time_left
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        self.time_left = time_left
+        move = (-1, -1)
+        for i in range(1, 1000):
+            try:
+                move = self.alphabeta(game, i)
+            except SearchTimeout:
+                break
+        return move
+
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
@@ -305,5 +353,38 @@ class AlphaBetaPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        return self.ab_stepper(game, depth)[0]
+
+
+    def ab_stepper(self, game, depth, alpha=float("-inf"), beta=float("inf")):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        if depth == 0:
+            return (game.get_player_location, self.score(game, self))
+
+        if game.active_player == self:
+            best, value = (-1,-1), float("-inf")
+            for move in game.get_legal_moves():
+                next = game.forecast_move(move)
+                score = self.ab_stepper(next, depth - 1, alpha, beta)[1]
+                if max(value, score) == score:
+                    best = move
+                    value = score
+                if value >= beta:
+                    return move, score
+                alpha = max(alpha, value)
+
+        else:
+            best, value = (-1,-1), float("inf")
+            for move in game.get_legal_moves():
+                next = game.forecast_move(move)
+                score = self.ab_stepper(next, depth - 1, alpha, beta)[1]
+                if min(value, score) == score:
+                    best = move
+                    value = score
+                if value <= alpha:
+                    return best, value
+                beta = min(beta, value)
+
+        return best, value

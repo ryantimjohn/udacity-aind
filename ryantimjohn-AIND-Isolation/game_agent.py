@@ -376,7 +376,7 @@ class AlphaBetaPlayer(IsolationPlayer):
             for move in game.get_legal_moves():
                 next = game.forecast_move(move)
                 score = self.ab_stepper(next, depth - 1, alpha, beta)[1]
-                if max(value, score) == score:
+                if score > value:
                     best = move
                     value = score
                 if value >= beta:
@@ -388,7 +388,7 @@ class AlphaBetaPlayer(IsolationPlayer):
             for move in game.get_legal_moves():
                 next = game.forecast_move(move)
                 score = self.ab_stepper(next, depth - 1, alpha, beta)[1]
-                if min(value, score) == score:
+                if score < value:
                     best = move
                     value = score
                 if value <= alpha:

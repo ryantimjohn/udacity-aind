@@ -102,8 +102,66 @@ class SelectorCV(ModelSelector):
 
     '''
 
+    """
+    Inherit:
+    def __init__(self, all_word_sequences: dict, all_word_Xlengths: dict, this_word: str,
+                 n_constant=3,
+                 min_n_components=2, max_n_components=10,
+                 random_state=14, verbose=False):
+        self.words = all_word_sequences
+        self.hwords = all_word_Xlengths
+        self.sequences = all_word_sequences[this_word]
+        self.X, self.lengths = all_word_Xlengths[this_word]
+        self.this_word = this_word
+        self.n_constant = n_constant
+        self.min_n_components = min_n_components
+        self.max_n_components = max_n_components
+        self.random_state = random_state
+        self.verbose = verbose
+
+    def select(self):
+        raise NotImplementedError
+
+    def base_model(self, num_states):
+        # with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        # warnings.filterwarnings("ignore", category=RuntimeWarning)
+        try:
+            hmm_model = GaussianHMM(n_components=num_states, covariance_type="diag", n_iter=1000,
+                                    random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+            if self.verbose:
+                print("model created for {} with {} states".format(self.this_word, num_states))
+            return hmm_model
+        except:
+            if self.verbose:
+                print("failure on {} with {} states".format(self.this_word, num_states))
+            return None
+    """
+
     def select(self):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection using CV
-        raise NotImplementedError
+        splits = 3
+        best_score, best_model = float("-inf"), None
+        for n_components in range(self.min_n_components, self.max_n_components + 1):
+            scores = []
+            model, logL = None, None
+            if(len(self.sequences) < splits):
+                break
+            split_method = KFold(random_state=self.random_state, n_splits=splits)
+            for cv_train_loc, cv_test_loc in split_method.split(self.sequences):
+                X_train, lengths_train = combine_sequences(cv_train_loc, self.sequences)
+                X_test, lengths_test = combine_sequences(cv_test_loc, self.sequences)
+                model = GaussianHMM(n_components=n_components, n_iter=1000,
+                                    random_state=self.random_state).fit(X_train, lengths_train)
+                logL = model.score(X_test, lengths_test)
+                scores.append(logL)
+            if len(scores) > 0:
+                average = np.average(scores)
+                if average > best_score:
+                    best_score, best_model = average, model
+
+        if best_model:
+            return best_model
+        return self.base_model(self.n_constant)

@@ -77,7 +77,22 @@ class SelectorBIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on BIC scores
-        raise NotImplementedError
+
+        best_score, best_model = float("inf"), None
+        for n_components in range(self.min_n_components, self.max_n_components + 1):
+            try:
+                model = self.base_model(n_components)
+                logL = model.score(self.X, self.lengths)
+                p = n_components * (n_components - 1) + 2 * self.X.shape[1] * n_components
+                logN = np.log(self.X.shape[0])
+                BIC = -2 * logL + p * logN
+                if BIC < best_score:
+                    best_score, best_model = BIC, model
+            except Exception as e:
+                continue
+        if best_model:
+            return best_model
+        return self.base_model(self.n_constant)
 
 
 class SelectorDIC(ModelSelector):
@@ -94,7 +109,30 @@ class SelectorDIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on DIC scores
-        raise NotImplementedError
+        best_score, best_model = float("-inf"), None
+        for n_components in range(self.min_n_components, self.max_n_components + 1):
+            try:
+                log_P_X_i = self.base_model(n_components).score(self.X, self.lengths)
+                sum = 0.0
+                words = list(self.words.keys())
+                M = len(words)
+                for word in words:
+                    try:
+                        model_selector = ModelSelector(self.words, self.hwords,
+                            word, self.n_constant, self.min_n_components,
+                            self.max_n_components, self.random_state, self.verbose)
+                        sum += model_selector.base_model(n_components).score(
+                            model_selector.X, model_selector.lengths)
+                    except Exception as e:
+                        M = M - 1
+                DIC = log_P_X_i - sum/(M-1)
+                if DIC > best_score:
+                    best_score, best_model = DIC, n_components
+            except Exception as e:
+                continue
+        if best_model:
+            return self.base_model(best_model)
+        return self.base_model(self.n_constant)
 
 
 class SelectorCV(ModelSelector):

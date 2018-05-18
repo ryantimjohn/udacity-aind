@@ -29,7 +29,10 @@ def recognize(models: dict, test_set: SinglesData):
 
         features, lengths = test_set.get_item_Xlengths(i)
         for word, model in models.items():
-            score_dict = model.score(features, lengths)
+            try:
+                score_dict[word] = model.score(features, lengths)
+            except Exception as e:
+                score_dict[word] = float("-inf")
             if score_dict[word] > best_score:
                 best_score, best_word = score_dict[word], word
 

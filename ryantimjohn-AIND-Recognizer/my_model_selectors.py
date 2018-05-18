@@ -189,12 +189,15 @@ class SelectorCV(ModelSelector):
                 break
             split_method = KFold(random_state=self.random_state, n_splits=splits)
             for cv_train_loc, cv_test_loc in split_method.split(self.sequences):
-                X_train, lengths_train = combine_sequences(cv_train_loc, self.sequences)
-                X_test, lengths_test = combine_sequences(cv_test_loc, self.sequences)
-                model = GaussianHMM(n_components=n_components, n_iter=1000,
-                                    random_state=self.random_state).fit(X_train, lengths_train)
-                logL = model.score(X_test, lengths_test)
-                scores.append(logL)
+                try:
+                    X_train, lengths_train = combine_sequences(cv_train_loc, self.sequences)
+                    X_test, lengths_test = combine_sequences(cv_test_loc, self.sequences)
+                    model = GaussianHMM(n_components=n_components, n_iter=1000,
+                                        random_state=self.random_state).fit(X_train, lengths_train)
+                    logL = model.score(X_test, lengths_test)
+                    scores.append(logL)
+                except Exception as e:
+                    continue
             if len(scores) > 0:
                 average = np.average(scores)
                 if average > best_score:
